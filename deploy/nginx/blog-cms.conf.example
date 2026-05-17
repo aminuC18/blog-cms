@@ -1,0 +1,88 @@
+# Blog CMS — Nginx for VPS IP (no domain). HTTP → HTTPS (self-signed).
+#
+# URLs:
+#   https://YOUR_VPS_IP/          → CMS (Docker :3002)
+#   https://YOUR_VPS_IP/api/...   → API  (Docker :3001)
+#
+# === On the server (once) ===
+#
+# 1) Replace YOUR_VPS_IP below, then create the certificate:
+#
+#    export VPS_IP=5.189.147.227
+#    sudo mkdir -p /etc/nginx/ssl
+#    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+#      -keyout /etc/nginx/ssl/blog-cms.key \
+#      -out /etc/nginx/ssl/blog-cms.crt \
+#      -subj "/CN=${VPS_IP}" \
+#      -addext "subjectAltName=IP:${VPS_IP}"
+#
+# 2) Install this file:
+#
+#    sudo cp /opt/blog-cms/deploy/nginx/blog-cms.conf.example /etc/nginx/sites-available/blog-cms
+#    sudo ln -sf /etc/nginx/sites-available/blog-cms /etc/nginx/sites-enabled/
+#    sudo rm -f /etc/nginx/sites-enabled/default
+#    sudo nginx -t && sudo systemctl reload nginx
+#
+# 3) Open https://YOUR_VPS_IP — accept the browser warning (self-signed).
+#
+# 4) backend/.env:
+#      FRONTEND_URL=https://YOUR_VPS_IP
+#      CORS_ORIGINS=https://YOUR_VPS_IP
+#      TRUST_PROXY=true
+#    frontend/.env:
+#      NEXT_PUBLIC_API_URL=https://YOUR_VPS_IP/api
+#      NEXT_PUBLIC_SITE_URL=https://YOUR_VPS_IP
+#    Then: docker compose up -d --build (backend + frontend)
+
+upstream blog_cms {
+  server 127.0.0.1:3002;
+  keepalive 32;
+}
+
+upstream blog_api {
+  server 127.0.0.1:3001;
+  keepalive 32;
+}
+
+# Redirect HTTP → HTTPS
+server {
+  listen 80 default_server;
+  listen [::]:80 default_server;
+  server_name _;
+  return 301 https://$host$request_uri;
+}
+
+# HTTPS (self-signed cert at /etc/nginx/ssl/)
+server {
+  listen 443 ssl default_server;
+  listen [::]:443 ssl default_server;
+  server_name _;
+
+  ssl_certificate     /etc/nginx/ssl/blog-cms.crt;
+  ssl_certificate_key /etc/nginx/ssl/blog-cms.key;
+
+  ssl_protocols TLSv1.2 TLSv1.3;
+  ssl_prefer_server_ciphers off;
+
+  client_max_body_size 12M;
+
+  location /api/ {
+    proxy_pass http://blog_api/api/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
+  location / {
+    proxy_pass http://blog_cms;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+  }
+}

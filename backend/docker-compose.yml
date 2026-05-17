@@ -1,0 +1,24 @@
+# API only — MongoDB comes from .env (MongoDB Atlas / cloud).
+#
+#   cp .env.example .env
+#   # set MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/blogdb
+#   docker compose up -d --build
+#
+# Local MongoDB + Redis instead of cloud:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+#
+# API: http://localhost:3001/api
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: blog-cms-backend:latest
+    restart: unless-stopped
+    ports:
+      - '${PORT:-3001}:3001'
+    env_file:
+      - .env
+    environment:
+      TRUST_PROXY: 'true'

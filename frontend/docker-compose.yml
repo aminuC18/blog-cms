@@ -1,0 +1,21 @@
+# Run from this directory (frontend/):
+#   cp .env.example .env
+#   docker compose up -d --build
+#
+# Site: http://localhost:3002
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+        NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-My Blog}
+    image: blog-cms-frontend:latest
+    restart: unless-stopped
+    ports:
+      - '${PORT:-3002}:3002'
+    env_file:
+      - .env

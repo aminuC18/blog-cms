@@ -1,0 +1,6 @@
+# Copy to deploy/deploy.config (not committed)
+# cp deploy/deploy.config.example deploy/deploy.config
+
+DEPLOY_HOST=5.189.147.227
+DEPLOY_USER=root
+DEPLOY_PATH=/opt/blog-cms
