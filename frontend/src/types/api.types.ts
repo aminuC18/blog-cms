@@ -72,3 +72,4 @@ export interface ApiResponse<T> {
   message?: string;
   meta?: PaginatedMeta;
 }
+
