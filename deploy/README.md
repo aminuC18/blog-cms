@@ -242,8 +242,26 @@ cat ~/.ssh/blog-cms-deploy.pub
 # Add to VPS: ~/.ssh/authorized_keys
 
 cat ~/.ssh/blog-cms-deploy
-# Paste into GitHub secret DEPLOY_SSH_KEY
+# Paste into GitHub secret DEPLOY_SSH_KEY (full private key, all lines)
+
+# Optional: base64 avoids multiline paste issues in GitHub UI
+base64 < ~/.ssh/blog-cms-deploy | tr -d '\n'
+# Paste that single line into DEPLOY_SSH_KEY instead
 ```
+
+**Verify before pushing** (must succeed or Actions will fail the same way):
+
+```bash
+ssh -i ~/.ssh/blog-cms-deploy -o IdentitiesOnly=yes root@YOUR_VPS_IP 'echo SSH OK'
+```
+
+In the Actions log, **Setup SSH** prints a key fingerprint — it must match:
+
+```bash
+ssh-keygen -l -f ~/.ssh/blog-cms-deploy
+```
+
+If fingerprint matches but **Verify SSH connection** still fails, the `.pub` is missing from `~/.ssh/authorized_keys` on the VPS for `DEPLOY_USER`.
 
 **What Actions does:**
 
