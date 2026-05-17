@@ -44,12 +44,19 @@ jobs:
         run: |
           set -euo pipefail
           DEPLOY_USER="${DEPLOY_USER:-root}"
-          ssh -i ~/.ssh/deploy_key \
+
+          echo "Public key offered to ${DEPLOY_USER}@${DEPLOY_HOST} (add this line to ~/.ssh/authorized_keys on the VPS if missing):"
+          ssh-keygen -y -f ~/.ssh/deploy_key
+
+          if ! ssh -i ~/.ssh/deploy_key \
             -o BatchMode=yes \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
             -o ConnectTimeout=15 \
-            "${DEPLOY_USER}@${DEPLOY_HOST}" 'echo "SSH OK"'
+            "${DEPLOY_USER}@${DEPLOY_HOST}" 'echo "SSH OK"'; then
+            echo "::error::SSH auth failed. The public key above must exist in ~${DEPLOY_USER}/.ssh/authorized_keys on the VPS."
+            exit 1
+          fi
 
       - name: Rsync to VPS
         env:

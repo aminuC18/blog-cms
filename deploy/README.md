@@ -263,6 +263,24 @@ ssh-keygen -l -f ~/.ssh/blog-cms-deploy
 
 If fingerprint matches but **Verify SSH connection** still fails, the `.pub` is missing from `~/.ssh/authorized_keys` on the VPS for `DEPLOY_USER`.
 
+**Fix “Permission denied (publickey)”** — the Actions log prints the exact public key line under *Public key offered to …*. On the VPS (Contabo console or your existing SSH session):
+
+```bash
+# As DEPLOY_USER (usually root)
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+nano ~/.ssh/authorized_keys   # paste the ssh-ed25519 AAAA... line from the Actions log
+chmod 600 ~/.ssh/authorized_keys
+```
+
+Or from your Mac if you already have password/root access:
+
+```bash
+ssh-copy-id -i ~/.ssh/blog-cms-deploy.pub root@YOUR_VPS_IP
+```
+
+`DEPLOY_SSH_KEY` in GitHub must be the **private** half of that same key pair (`cat ~/.ssh/blog-cms-deploy`), not your personal `id_ed25519`.
+
 **What Actions does:**
 
 1. Checkout code
