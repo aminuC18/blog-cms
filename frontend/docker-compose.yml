@@ -19,3 +19,7 @@ services:
       - '${PORT:-3002}:3002'
     env_file:
       - .env
+    environment:
+      SERVER_API_URL: ${SERVER_API_URL:-http://host.docker.internal:3001/api}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'

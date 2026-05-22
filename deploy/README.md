@@ -176,6 +176,7 @@ TRUST_PROXY=true
 NEXT_PUBLIC_API_URL=http://YOUR_VPS_IP:3001/api
 NEXT_PUBLIC_SITE_URL=http://YOUR_VPS_IP:3002
 NEXT_PUBLIC_SITE_NAME=My Blog
+SERVER_API_URL=http://host.docker.internal:3001/api
 ```
 
 **Nginx (HTTP or HTTPS):**
@@ -184,9 +185,12 @@ NEXT_PUBLIC_SITE_NAME=My Blog
 NEXT_PUBLIC_API_URL=https://YOUR_VPS_IP/api
 NEXT_PUBLIC_SITE_URL=https://YOUR_VPS_IP
 NEXT_PUBLIC_SITE_NAME=My Blog
+SERVER_API_URL=http://host.docker.internal:3001/api
 ```
 
-`NEXT_PUBLIC_*` values are baked in at **Docker build time**.
+`NEXT_PUBLIC_*` values are baked in at **Docker build time**. `SERVER_API_URL`
+is used only by Next.js server-side rendering inside Docker, so homepage/public
+blog reads can reach the backend through the host-published API port.
 
 ---
 
