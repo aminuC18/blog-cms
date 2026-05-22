@@ -1,17 +1,17 @@
 import { apiUrl } from '@/lib/utils';
 import type { ApiResponse, Blog, PaginatedMeta, Tag, User } from '@/types/api.types';
 
+const serverApiUrl = process.env.SERVER_API_URL ?? apiUrl;
+
 async function publicFetch<T>(path: string) {
-  try {
-    const response = await fetch(`${apiUrl}${path}`, { next: { revalidate: 60 } });
-    if (!response.ok) {
-      throw new Error(`Request failed: ${response.status}`);
-    }
-    const payload = (await response.json()) as ApiResponse<T>;
-    return payload;
-  } catch {
-    return { success: true, data: [] as T };
+  const url = `${serverApiUrl}${path}`;
+  const response = await fetch(url, { cache: 'no-store' });
+
+  if (!response.ok) {
+    throw new Error(`Public API request failed: ${response.status} ${url}`);
   }
+
+  return (await response.json()) as ApiResponse<T>;
 }
 
 export async function fetchPublicBlogs(params: Record<string, string | number | undefined> = {}) {
@@ -44,6 +44,13 @@ export async function fetchPublicAuthor(username: string) {
     throw new Error('Author not found');
   }
   return payload.data;
+}
+
+export async function fetchPublicAuthorBlogs(username: string, page = 1, limit = 10) {
+  const payload = await publicFetch<Blog[]>(
+    `/public/authors/${username}/blogs?page=${page}&limit=${limit}`,
+  );
+  return { items: payload.data, meta: payload.meta as PaginatedMeta };
 }
 
 export async function searchPublicBlogs(q: string, page = 1) {

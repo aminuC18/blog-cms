@@ -1,14 +1,8 @@
 import { BlogCard } from '@/components/blog/BlogCard';
-import { fetchPublicAuthor } from '@/lib/api/public.api';
-import { apiUrl } from '@/lib/utils';
-
-async function fetchAuthorBlogs(username: string) {
-  const response = await fetch(`${apiUrl}/public/authors/${username}/blogs`, {
-    next: { revalidate: 60 },
-  });
-  const payload = await response.json();
-  return payload.data as Array<Parameters<typeof BlogCard>[0]['blog']>;
-}
+import {
+  fetchPublicAuthor,
+  fetchPublicAuthorBlogs,
+} from '@/lib/api/public.api';
 
 export default async function AuthorPage({
   params,
@@ -16,9 +10,9 @@ export default async function AuthorPage({
   params: Promise<{ username: string }>;
 }) {
   const { username } = await params;
-  const [author, blogs] = await Promise.all([
+  const [author, { items: blogs }] = await Promise.all([
     fetchPublicAuthor(username),
-    fetchAuthorBlogs(username),
+    fetchPublicAuthorBlogs(username),
   ]);
 
   return (
