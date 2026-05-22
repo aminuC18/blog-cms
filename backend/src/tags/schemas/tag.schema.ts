@@ -6,7 +6,7 @@ export type TagDocument = HydratedDocument<Tag>;
 
 @Schema({ timestamps: true })
 export class Tag {
-  @Prop({ required: true, unique: true, maxlength: 50, trim: true })
+  @Prop({ required: true, maxlength: 50, trim: true })
   name!: string;
 
   @Prop({ required: true, unique: true, trim: true, lowercase: true })
@@ -23,7 +23,10 @@ export class Tag {
 }
 
 export const TagSchema = SchemaFactory.createForClass(Tag);
-TagSchema.index({ name: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } });
+TagSchema.index(
+  { name: 1 },
+  { unique: true, collation: { locale: 'en', strength: 2 } },
+);
 
 TagSchema.pre('validate', function handleTagSlug() {
   if (!this.slug && this.name) {

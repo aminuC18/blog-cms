@@ -154,7 +154,7 @@ function summarizeBody(value: unknown): unknown {
 
 function safeStringify(value: unknown): string {
   try {
-    return JSON.stringify(value);
+    return JSON.stringify(value) ?? 'undefined';
   } catch {
     return '[UNSERIALIZABLE]';
   }
