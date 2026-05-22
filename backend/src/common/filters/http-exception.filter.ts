@@ -4,9 +4,10 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { ValidationError } from 'class-validator';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import {
   defaultMessageForStatus,
   humanizeFieldName,
@@ -21,8 +22,11 @@ interface FieldError {
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
+    const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
 
     if (exception instanceof HttpException) {
@@ -36,6 +40,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
       const errors = this.normalizeErrors(payload.errors, payload.message);
       const message = this.resolveMessage(status, payload.message, errors);
 
+      if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+        this.logCritical(request, exception, status, message);
+      }
+
       response.status(status).json({
         success: false,
         statusCode: status,
@@ -44,6 +52,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       });
       return;
     }
+
+    this.logCritical(
+      request,
+      exception,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      defaultMessageForStatus(HttpStatus.INTERNAL_SERVER_ERROR),
+    );
 
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       success: false,
@@ -83,7 +98,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     return defaultMessageForStatus(status);
   }
 
-  private normalizeErrors(rawErrors: unknown, rawMessage: unknown): FieldError[] {
+  private normalizeErrors(
+    rawErrors: unknown,
+    rawMessage: unknown,
+  ): FieldError[] {
     if (Array.isArray(rawErrors)) {
       return rawErrors
         .map((error) => this.normalizeFieldError(error))
@@ -144,5 +162,23 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     return null;
+  }
+
+  private logCritical(
+    request: Request,
+    exception: unknown,
+    status: number,
+    message: string,
+  ) {
+    this.logger.error(
+      JSON.stringify({
+        event: 'api.critical',
+        method: request.method,
+        path: request.originalUrl ?? request.url,
+        statusCode: status,
+        message,
+      }),
+      exception instanceof Error ? exception.stack : undefined,
+    );
   }
 }

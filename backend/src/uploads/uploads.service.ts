@@ -52,14 +52,21 @@ export class UploadsService {
     private readonly cache: RedisCacheService,
   ) {
     cloudinary.config({
-      cloud_name: this.configService.getOrThrow<string>('CLOUDINARY_CLOUD_NAME'),
+      cloud_name: this.configService.getOrThrow<string>(
+        'CLOUDINARY_CLOUD_NAME',
+      ),
       api_key: this.configService.getOrThrow<string>('CLOUDINARY_API_KEY'),
-      api_secret: this.configService.getOrThrow<string>('CLOUDINARY_API_SECRET'),
+      api_secret: this.configService.getOrThrow<string>(
+        'CLOUDINARY_API_SECRET',
+      ),
     });
   }
 
   private getFolder(): string {
-    return this.configService.get<string>('CLOUDINARY_UPLOAD_FOLDER', 'blog/uploads');
+    return this.configService.get<string>(
+      'CLOUDINARY_UPLOAD_FOLDER',
+      'blog/uploads',
+    );
   }
 
   private getListCacheTtlSeconds(): number {
@@ -67,13 +74,19 @@ export class UploadsService {
   }
 
   private listCacheKey(folder: string, limit: number, cursor?: string): string {
-    const folderKey = createHash('sha256').update(folder).digest('hex').slice(0, 16);
+    const folderKey = createHash('sha256')
+      .update(folder)
+      .digest('hex')
+      .slice(0, 16);
     const cursorKey = cursor?.trim() || '_';
     return `uploads:list:${folderKey}:${limit}:${cursorKey}`;
   }
 
   private listCachePattern(folder: string): string {
-    const folderKey = createHash('sha256').update(folder).digest('hex').slice(0, 16);
+    const folderKey = createHash('sha256')
+      .update(folder)
+      .digest('hex')
+      .slice(0, 16);
     return `uploads:list:${folderKey}:*`;
   }
 
@@ -84,35 +97,42 @@ export class UploadsService {
   async listByFolder(
     cursor?: string,
     limit = 24,
-  ): Promise<{ data: UploadListResult; cache: UploadListCacheStatus; cacheLayer?: string }> {
+  ): Promise<{
+    data: UploadListResult;
+    cache: UploadListCacheStatus;
+    cacheLayer?: string;
+  }> {
     const folder = this.getFolder();
     const maxResults = Math.min(100, Math.max(1, Math.floor(limit)));
     const cacheKey = this.listCacheKey(folder, maxResults, cursor);
 
-    const { value: cached, layer } = await this.cache.getJson<UploadListResult>(cacheKey);
+    const { value: cached, layer } =
+      await this.cache.getJson<UploadListResult>(cacheKey);
     if (cached) {
       this.logger.debug(`Upload list cache HIT (${layer}) key=${cacheKey}`);
       return { data: cached, cache: 'HIT', cacheLayer: layer };
     }
 
     try {
-      const result = await new Promise<CloudinaryListResult>((resolve, reject) => {
-        cloudinary.api.resources(
-          {
-            type: 'upload',
-            prefix: folder,
-            max_results: maxResults,
-            ...(cursor ? { next_cursor: cursor } : {}),
-          },
-          (error, res) => {
-            if (error) {
-              reject(error);
-              return;
-            }
-            resolve(res as CloudinaryListResult);
-          },
-        );
-      });
+      const result = await new Promise<CloudinaryListResult>(
+        (resolve, reject) => {
+          cloudinary.api.resources(
+            {
+              type: 'upload',
+              prefix: folder,
+              max_results: maxResults,
+              ...(cursor ? { next_cursor: cursor } : {}),
+            },
+            (error, res) => {
+              if (error) {
+                reject(error);
+                return;
+              }
+              resolve(res as CloudinaryListResult);
+            },
+          );
+        },
+      );
 
       const payload: UploadListResult = {
         items: (result.resources ?? []).map((r) => ({
@@ -130,9 +150,15 @@ export class UploadsService {
 
       const ttl = this.getListCacheTtlSeconds();
       await this.cache.setJson(cacheKey, payload, ttl);
-      this.logger.debug(`Upload list cache MISS — stored (${ttl}s) key=${cacheKey}`);
+      this.logger.debug(
+        `Upload list cache MISS — stored (${ttl}s) key=${cacheKey}`,
+      );
       return { data: payload, cache: 'MISS' };
-    } catch {
+    } catch (error) {
+      this.logger.error(
+        `Critical Cloudinary list failure for folder=${folder}: ${(error as Error).message}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       throw new InternalServerErrorException(
         'Could not load files from Cloudinary. Check API credentials and folder settings.',
       );
@@ -220,7 +246,11 @@ export class UploadsService {
 
       await this.invalidateListCache(folder);
       return uploaded;
-    } catch {
+    } catch (error) {
+      this.logger.error(
+        `Critical Cloudinary upload failure for folder=${folder} resourceType=${resourceType}: ${(error as Error).message}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       throw new InternalServerErrorException('File upload failed');
     }
   }
