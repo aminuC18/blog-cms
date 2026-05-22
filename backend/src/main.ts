@@ -1,4 +1,4 @@
-import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -11,6 +11,7 @@ import {
 } from './common/utils/user-error.util';
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
@@ -22,13 +23,18 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.use(helmet());
   app.use(cookieParser());
-  const frontendUrl = configService.get<string>('FRONTEND_URL', 'http://localhost:3002');
+  const frontendUrl = configService.get<string>(
+    'FRONTEND_URL',
+    'http://localhost:3002',
+  );
   const extraOrigins = configService
     .get<string>('CORS_ORIGINS', '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
-  const allowedOrigins = [...new Set([frontendUrl, ...extraOrigins].filter(Boolean))];
+  const allowedOrigins = [
+    ...new Set([frontendUrl, ...extraOrigins].filter(Boolean)),
+  ];
   app.enableCors({
     origin: allowedOrigins,
     credentials: true,
@@ -90,9 +96,17 @@ async function bootstrap() {
 
   const port = Number(configService.get('PORT', 3001));
   await app.listen(port);
+  logger.log(`Backend API listening on port ${port}`);
 }
 
-void bootstrap();
+void bootstrap().catch((error: unknown) => {
+  const logger = new Logger('Bootstrap');
+  logger.error(
+    'Critical backend startup failure',
+    error instanceof Error ? error.stack : undefined,
+  );
+  process.exit(1);
+});
 
 function flattenValidationErrors(
   error: {
@@ -106,7 +120,9 @@ function flattenValidationErrors(
   },
   parentPath = '',
 ): Array<{ field: string; message: string }> {
-  const fieldPath = parentPath ? `${parentPath}.${error.property}` : error.property;
+  const fieldPath = parentPath
+    ? `${parentPath}.${error.property}`
+    : error.property;
   const current = error.constraints
     ? Object.values(error.constraints).map((message) => ({
         field: fieldPath,
